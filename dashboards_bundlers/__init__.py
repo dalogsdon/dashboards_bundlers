@@ -22,6 +22,12 @@ def _jupyter_bundler_paths():
             'group': 'deploy'
         },
         {
+            'name': 'dashboards_publish',
+            'label': 'Post on Blog',
+            'module_name': 'dashboards_bundlers.publish',
+            'group': 'deploy'
+        },
+        {
             'name': 'dashboards_server_download',
             'label': 'Jupyter Dashboards Server bundle (.zip)',
             'module_name': 'dashboards_bundlers.server_download',

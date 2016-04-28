@@ -7,16 +7,16 @@ import sys
 from ._version import __version__
 
 from notebook.services.config import ConfigManager
-from notebook.nbextensions import (EnableNBExtensionApp, 
+from notebook.nbextensions import (EnableNBExtensionApp,
     DisableNBExtensionApp, flags, aliases)
-    
+
 try:
     from notebook.nbextensions import BaseNBExtensionApp
     _new_extensions = True
 except ImportError:
     BaseNBExtensionApp = object
     _new_extensions = False
-    
+
 from traitlets.config.application import catch_config_error
 from traitlets.config.application import Application
 
@@ -58,7 +58,7 @@ class ExtensionActivateApp(EnableNBExtensionApp):
     def start(self):
         self.log.info("Activating jupyter_dashboards_bundlers JS notebook extensions")
         cm = ConfigManager(parent=self, config=self.config)
-        cm.update('notebook', { 
+        cm.update('notebook', {
             'jupyter_cms_bundlers': {
                 'dashboards_local_deploy': {
                     'label': 'Local Dashboard',
@@ -73,6 +73,11 @@ class ExtensionActivateApp(EnableNBExtensionApp):
                 'dashboards_server_upload': {
                     'label': 'Dashboard on Jupyter Dashboards Server',
                     'module_name': 'dashboards_bundlers.server_upload',
+                    'group': 'deploy'
+                },
+                'dashboards_publish': {
+                    'label': 'Post on Blog',
+                    'module_name': 'dashboards_bundlers.publish',
                     'group': 'deploy'
                 },
                 'dashboards_server_download': {
@@ -102,7 +107,7 @@ class ExtensionDeactivateApp(DisableNBExtensionApp):
     def start(self):
         self.log.info("Deactivating jupyter_dashboards_bundlers JS notebook extensions")
         cm = ConfigManager(parent=self, config=self.config)
-        cm.update('notebook', { 
+        cm.update('notebook', {
             'jupyter_cms_bundlers': {
                 'dashboards_local_deploy' : None,
                 'dashboards_php_download' : None,
@@ -120,7 +125,7 @@ class ExtensionQuickSetupApp(BaseNBExtensionApp):
 
     def start(self):
         self.argv.extend(['--py', 'dashboards_bundlers'])
-        
+
         from jupyter_cms import bundlerapp
         enable = bundlerapp.EnableNBBundlerApp()
         enable.initialize(self.argv)
@@ -134,7 +139,7 @@ class ExtensionQuickRemovalApp(BaseNBExtensionApp):
 
     def start(self):
         self.argv.extend(['--py', 'dashboards_bundlers'])
-        
+
         from jupyter_cms import bundlerapp
         enable = bundlerapp.DisableNBBundlerApp()
         enable.initialize(self.argv)
@@ -147,7 +152,7 @@ class ExtensionApp(Application):
     examples = ""
 
     subcommands = {}
-    
+
     if _new_extensions:
         subcommands.update({
             "quick-setup": (

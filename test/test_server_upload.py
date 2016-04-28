@@ -9,9 +9,20 @@ import dashboards_bundlers.server_upload as converter
 import jupyter_cms
 from tornado import web
 
+dashboard_link = 'http://notebook-server:3000/dashboards/test'
+post_link = 'http://publish-server:8080/posts/test'
+
 class MockResult(object):
     def __init__(self, status_code):
+        def _json():
+            return {
+                'link': dashboard_link,
+                'post': {
+                    'link': post_link
+                }
+            }
         self.status_code = status_code
+        self.json = _json
 
 class MockPost(object):
     def __init__(self, status_code):
@@ -83,8 +94,20 @@ class TestServerUpload(unittest.TestCase):
         self.assertEqual(args[0], 'http://dashboard-server/_api/notebooks/no_imports')
         self.assertTrue(kwargs['files']['file'])
         self.assertEqual(kwargs['headers'], {})
-        self.assertEqual(handler.last_redirect,
-            'http://dashboard-server/dashboards/no_imports')
+        self.assertEqual(handler.last_redirect, dashboard_link)
+
+    def test_publish_notebook(self):
+        '''Should POST the notebook and redirect to the published post.'''
+        os.environ['DASHBOARD_SERVER_URL'] = 'http://dashboard-server'
+        handler = MockHandler()
+        converter.bundle(handler, 'test/resources/no_imports.ipynb', True)
+
+        args = converter.requests.post.args
+        kwargs = converter.requests.post.kwargs
+        self.assertEqual(args[0], 'http://dashboard-server/_api/notebooks/no_imports')
+        self.assertTrue(kwargs['files']['file'])
+        self.assertEqual(kwargs['headers'], {})
+        self.assertEqual(handler.last_redirect, post_link)
 
     def test_upload_zip(self):
         '''
@@ -101,8 +124,7 @@ class TestServerUpload(unittest.TestCase):
         self.assertEqual(args[0], 'http://dashboard-server/_api/notebooks/some')
         self.assertTrue(kwargs['files']['file'])
         self.assertEqual(kwargs['headers'], {})
-        self.assertEqual(handler.last_redirect,
-            'http://dashboard-server/dashboards/some')
+        self.assertEqual(handler.last_redirect, dashboard_link)
         self.assertTrue('index.ipynb' in converter.requests.post.zipped_files)
         self.assertTrue('some.csv' in converter.requests.post.zipped_files)
 
@@ -125,17 +147,4 @@ class TestServerUpload(unittest.TestCase):
 
         args = converter.requests.post.args
         self.assertEqual(args[0], 'https://notebook-server:8889/_api/notebooks/no_imports')
-        self.assertEqual(handler.last_redirect,
-            'https://notebook-server:8889/dashboards/no_imports')
-
-    def test_redirect(self):
-        '''Should redirect to the given URL'''
-        os.environ['DASHBOARD_SERVER_URL'] = '{protocol}://{hostname}:8889'
-        os.environ['DASHBOARD_REDIRECT_URL'] = 'http://{hostname}:3000'
-        handler = MockHandler('notebook-server:8888', 'https')
-        converter.bundle(handler, 'test/resources/no_imports.ipynb')
-
-        args = converter.requests.post.args
-        self.assertEqual(args[0], 'https://notebook-server:8889/_api/notebooks/no_imports')
-        self.assertEqual(handler.last_redirect,
-            'http://notebook-server:3000/dashboards/no_imports')
+        self.assertEqual(handler.last_redirect, dashboard_link)

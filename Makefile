@@ -29,7 +29,6 @@ define NOTEBOOK_SERVER
 	-p 9500:8888 \
 	-e AUTORELOAD=$(AUTORELOAD) \
 	-e DASHBOARD_SERVER_URL=$(DASHBOARD_SERVER_URL) \
-	-e DASHBOARD_REDIRECT_URL=$(DASHBOARD_REDIRECT_URL) \
 	-e DASHBOARD_SERVER_AUTH_TOKEN=$(DASHBOARD_SERVER_AUTH_TOKEN) \
 	-v `pwd`:/src \
 	-v `pwd`/etc/notebooks:/home/jovyan/work
@@ -89,12 +88,10 @@ dev-with-decl-widgets: ## Same as dev but w/ declarative widgets (no bower)
 		 	$(EXT_DEV_SETUP) && $(CMD)'
 
 dev-with-dashboard-server: CMD?=start-notebook.sh
-dev-with-dashboard-server: DASHBOARD_REDIRECT_URL?=$$(docker-machine ip $$(docker-machine active))
 dev-with-dashboard-server: ## Same as dev but w/ decl widgets and Docker link to dashboards-server container
 	$(NOTEBOOK_SERVER) \
 		--link dashboard-server:dashboard-server \
 		-e DASHBOARD_SERVER_URL=http://dashboard-server:3000 \
-		-e DASHBOARD_REDIRECT_URL=http://$(DASHBOARD_REDIRECT_URL):3000 \
 		$(DEV_REPO) bash -c 'pip install requests && \
 			jupyter declarativewidgets install --user --symlink --overwrite && \
 			jupyter declarativewidgets activate && \

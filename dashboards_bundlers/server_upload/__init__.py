@@ -13,10 +13,11 @@ from ..local_deploy import bundle_file_references, bundle_declarative_widgets
 UPLOAD_ENDPOINT = '/_api/notebooks/'
 VIEW_ENDPOINT = '/dashboards/'
 
-def bundle(handler, abs_nb_path):
+def bundle(handler, abs_nb_path, publish=False):
     '''
     Uploads a notebook to a Jupyter Dashboard Server, either by itself, or
-    within a zip file with associated data and widget files
+    within a zip file with associated data and widget files. Optionally
+    publishes the uploaded notebook to a blogging platform.
     '''
     # Get name of notebook from filename
     notebook_basename = os.path.basename(abs_nb_path)
@@ -27,7 +28,7 @@ def bundle(handler, abs_nb_path):
     try:
         output_dir = os.path.join(tmp_dir, notebook_name)
         bundled = make_upload_bundle(abs_nb_path, output_dir, handler.tools)
-        send_file(bundled, notebook_name, handler)
+        send_file(bundled, notebook_name, handler, publish)
     finally:
         shutil.rmtree(tmp_dir, True)
 
@@ -58,7 +59,7 @@ def make_upload_bundle(abs_nb_path, staging_dir, tools):
     zip_file = shutil.make_archive(staging_dir, format='zip', root_dir=staging_dir, base_dir='.')
     return zip_file
 
-def send_file(file_path, dashboard_name, handler):
+def send_file(file_path, dashboard_name, handler, do_publish=False):
     '''
     Posts a file to the Jupyter Dashboards Server to be served as a dashboard
     :param file_path: The path of the file to send
@@ -75,6 +76,12 @@ def send_file(file_path, dashboard_name, handler):
         port = ''
     protocol = handler.request.protocol
 
+    # set the publish field
+    if do_publish:
+        publish = 'true'
+    else:
+        publish = 'false'
+
     # Treat empty as undefined
     dashboard_server = os.getenv('DASHBOARD_SERVER_URL')
     if dashboard_server:
@@ -88,18 +95,16 @@ def send_file(file_path, dashboard_name, handler):
             if token:
                 headers['Authorization'] = 'token {}'.format(token)
             result = requests.post(upload_url, files={'file': file_content},
-                headers=headers, timeout=60)
+                data={'publish': publish}, headers=headers, timeout=60)
             if result.status_code >= 400:
                 raise web.HTTPError(result.status_code)
 
         # Redirect for client might be different from internal upload URL
-        redirect_server = os.getenv('DASHBOARD_REDIRECT_URL')
-        if redirect_server:
-            redirect_root = redirect_server.format(hostname=hostname,
-                port=port, protocol=protocol)
+        res_body = result.json()
+        if do_publish:
+            handler.redirect(res_body['post']['link'])
         else:
-            redirect_root = dashboard_server
-        handler.redirect(url_path_join(redirect_root, VIEW_ENDPOINT, escape.url_escape(dashboard_name, False)))
+            handler.redirect(res_body['link'])
     else:
         access_log.debug('Can not deploy, DASHBOARD_SERVER_URL not set')
         raise web.HTTPError(500, log_message='No dashboard server configured')
